@@ -1,0 +1,12 @@
+[Unit]
+Description=Bedclock Led Matrix Control
+
+[Service]
+User=pi
+Type=simple
+ExecStart=/home/pi/bedclock.git/bedclock/bin/start_bedclock.sh
+ExecStopPost=/home/pi/bedclock.git/bedclock/bin/stop_bedclock.sh
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

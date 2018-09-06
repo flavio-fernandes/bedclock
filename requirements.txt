@@ -1,0 +1,10 @@
+dill
+six
+#paho-mqtt
+#pyyaml>=3.11
+setuptools
+
+# The following requirments only work on armv6l (Like a Raspberry PI)
+RPI.GPIO ; platform_machine != 'x86_64'
+adafruit-blinka ; platform_machine != 'x86_64'
+adafruit-circuitpython-apds9960 ; platform_machine != 'x86_64'
