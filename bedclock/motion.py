@@ -25,10 +25,13 @@ class State(object):
         self.queueEventFun = queueEventFun  # queue for output events to main.py
         self.cmdq = multiprocessing.Queue(CMDQ_SIZE)  # queue for input commands
         self.apds = None
+        self.luxAboveWatermark = True
         self.luxLastPeriodicReport = datetime.now()
+        self.forceNextLuxEvent = True
         # fudge an initial lux value, before real read takes place
-        self.currLux = const.motion_luxDarkRoomThreshold + \
-            const.motion_luxChangeThreshold + 1
+        self.currLux = const.motion_luxMaxValue
+        self.lastLuxReported = -1
+        self.currRawProximity = 999
         self.currProximity = 0
         self.currProximityDampenTimestamp = datetime.now()
         # enabled via main's MotionProcess
@@ -74,7 +77,7 @@ def init_apds():
     apds.enable_proximity = True
 
     _state.apds = apds
-    logger.debug("motion sensor initialized")
+    logger.info("motion sensor initialized")
 
 # =============================================================================
 
@@ -97,8 +100,7 @@ def do_iterate():
     except (KeyboardInterrupt, SystemExit):
         pass
 
-    ms_sleep(333)
-    #ms_sleep(3000)
+    ms_sleep(321)
 
     if _state.apds is None:
         init_apds()
@@ -121,25 +123,41 @@ def do_iterate_light():
     r, g, b, _c = _state.apds.color_data
     newLux = colorutility.calculate_lux(r, g, b)
 
-    _state.currLux = int(newLux)
+    _state.currLux = max(0, int(newLux))
     now = datetime.now()
     tdelta = now - _state.luxLastPeriodicReport
 
-    # Only two reasons why lux should be reported:
-    # 1) sudden change
+    # Reasons why lux should be reported:
+    # 1) explicitly asked to do so
     # 2) predetermined report interval
-    if abs(newLux - currLux) <= const.motion_luxChangeThreshold and \
-       int(tdelta.total_seconds()) <= const.motion_luxReportPeriodInSeconds:
+    # 3) high/low watermark reached
+    # 4) big delta
+    sendLuxEvent = False
+    if _state.forceNextLuxEvent:
+        _state.forceNextLuxEvent = False
+        sendLuxEvent = True
+    elif int(tdelta.total_seconds()) > const.motion_luxReportPeriodInSeconds:
+        sendLuxEvent = True
+    elif _state.currLux >= const.motion_luxHighWatermark and not _state.luxAboveWatermark:
+        _state.luxAboveWatermark = True
+        sendLuxEvent = True
+    elif _state.currLux <= const.motion_luxLowWatermark and _state.luxAboveWatermark:
+        _state.luxAboveWatermark = False
+        sendLuxEvent = True
+    elif abs(_state.lastLuxReported - _state.currLux) >= const.motion_luxDeltaThreshold:
+        sendLuxEvent = True
+
+    if not sendLuxEvent:
         return
 
-    logger.debug("lux updated to {}".format(_state.currLux))
+    logger.debug("lux update from {} to {}".format(currLux, _state.currLux))
 
     # create lux event and send it to main
     _state.luxLastPeriodicReport = now
+    _state.lastLuxReported = _state.currLux
     if _state.luxNotifyEnabled:
         event = events.MotionLux(_state.currLux)
         _notifyEvent(event)
-
 
 # =============================================================================
 
@@ -147,7 +165,7 @@ def do_iterate_light():
 def do_iterate_proximity():
     global _state
 
-    # dampen how ofen we look at proximity based on the last time
+    # dampen how often we look at proximity based on the last time
     # the proximity got updated
     now = datetime.now()
     tdelta = now - _state.currProximityDampenTimestamp
@@ -156,13 +174,18 @@ def do_iterate_proximity():
 
     oldProximity = _state.currProximity
     newProximity = _state.apds.proximity()
+    _state.currRawProximity = newProximity
+
+    # if proximity is less than min threshold, set it to 0
+    if newProximity < const.motion_proximityMinThreshold:
+        newProximity = 0
     if abs(newProximity - _state.currProximity) <= 2:
         # too small of a change... filter it out, unless this is going to 0
         if (_state.currProximity == newProximity or newProximity != 0):
             return
 
-    logger.debug("proximity update: from {} to {}".format(
-        _state.currProximity, newProximity))
+    logger.debug("proximity update: from {} to {} (raw {})".format(
+        _state.currProximity, newProximity, _state.currRawProximity))
 
     _state.currProximity = newProximity
     _state.currProximityDampenTimestamp = now
@@ -186,11 +209,24 @@ def _enqueue_cmd(l):
     global _state
     lDill = dill.dumps(l)
     try:
-        _state.cmdq.put(lDill, False)
+        _state.cmdq.put_nowait(lDill)
     except queue.Full:
         logger.error("command queue is full: cannot add")
         return False
     return True
+
+
+# called from outside this module
+def do_lux_report():
+    logger.debug("queuing lux_report request")
+    params = []
+    return _enqueue_cmd((_do_lux_report, params))
+
+
+def _do_lux_report():
+    global _state
+    _state.forceNextLuxEvent = True
+    logger.debug("_do_lux_report set state.forceNextLuxEvent")
 
 
 # called from outside this module

@@ -2,6 +2,7 @@
 Description=Bedclock Led Matrix Control
 
 [Service]
+SyslogIdentifier=bedclock
 User=pi
 Type=simple
 ExecStart=/home/pi/bedclock.git/bedclock/bin/start_bedclock.sh

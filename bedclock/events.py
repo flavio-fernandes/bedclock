@@ -25,3 +25,15 @@ class MotionProximity(Base):
 class MotionDetected(Base):
     def __init__(self):
         Base.__init__(self, "motion detected")
+
+
+class LuxUpdateRequest(Base):
+    def __init__(self, requester="anonymous"):
+        Base.__init__(self, "lux update requested by {}".format(requester))
+
+
+class ScreenStaysOn(Base):
+    def __init__(self, enable, requester="anonymous"):
+        Base.__init__(self,
+                      "screen stays on {} requested by {}".format(enable, requester),
+                      enable)
