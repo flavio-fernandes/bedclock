@@ -29,9 +29,10 @@ class State(object):
         self.queueEventFun = queueEventFun  # queue for output events
         self.cmdq = multiprocessing.Queue(CMDQ_SIZE)  # queue for input commands
         self.matrix = None
-        self.cachedNormalizedLux = 100
+        self.cachedNormalizedLux = const.scr_brightnessMaxValue
         self.cachedProximity = 0
         self.timer_tick_services = []
+        self.fonts = []
         timer_tick_data = {
             'black': graphics.Color(0, 0, 0),
             'green': graphics.Color(0, 255, 0),
@@ -52,6 +53,10 @@ class State(object):
         # never converge to 0
         self.stayOnCurrentBrightnessTimeout = const.scr_wakeupTimeoutInSeconds
 
+        # is room is dark, the knob below dictates wheter screen
+        # should go completely blank or not
+        self.stayOnInDarkRoom = const.scr_stayOnInDarkRoomDefault
+
 # =============================================================================
 
 
@@ -60,6 +65,24 @@ def do_init(queueEventFun=None):
     _state = State(queueEventFun)
 
     logger.debug("init called")
+
+# =============================================================================
+
+
+def _notifyEvent(event):
+    global _state
+    if _state.queueEventFun:
+        logger.debug("generating event: {}".format(event.name))
+        _state.queueEventFun(event)
+
+# =============================================================================
+
+
+def _notifyEventLuxUpdateRequest():
+    requester = os.path.split(__file__)[-1]
+    requester = requester.split('.py')[0]
+    event = events.LuxUpdateRequest(requester)
+    _notifyEvent(event)
 
 # =============================================================================
 
@@ -85,10 +108,11 @@ def init_matrix():
         options.gpio_slowdown = const.scr_led_slowdown_gpio
     if const.scr_led_no_hardware_pulse:
         options.disable_hardware_pulsing = True
+    options.pixel_mapper_config = const.scr_pixel_mapper_config
 
+    # https://github.com/hzeller/rpi-rgb-led-matrix/issues/679#issuecomment-423268899
     _state.matrix = RGBMatrix(options=options)
 
-    _state.fonts = []
     for fontFilename in ["10x20", "6x9"]:
         font = graphics.Font()
         font.LoadFont("{}/{}.bdf".format(const.scr_fonts_dir, fontFilename))
@@ -107,6 +131,7 @@ def do_iterate():
         init_matrix()
         init_timer_ticks()
         drawClock()
+        _notifyEventLuxUpdateRequest()
 
     try:
         cmdDill = _state.cmdq.get(True, TIMERTICK_UNIT)
@@ -196,8 +221,9 @@ def adjustBrightness():
             _state.wantedBrightness))
     else:
         # queue an event to self, so we are not bound to wait for TIMERTICK_UNIT timeout.
-        # Note that this will cause timer_tick to be called twice in do_iterate() no biggie.
-        _enqueue_cmd((timer_tick, []))
+        # Note that this will cause timer_tick to be called twice in do_iterate(). No biggie.
+        if _state.cmdq.empty():
+            _enqueue_cmd((timer_tick, []))
 
 
 def updateBrightnessTimeoutInSeconds():
@@ -208,7 +234,7 @@ def updateBrightnessTimeoutInSeconds():
             return
         # update wanted brightness to what lux has determined it to be?
         if _state.useLuxToDetermineBrightness:
-            _state.wantedBrightness = _state.cachedNormalizedLux
+            _notifyEventLuxUpdateRequest()
         logger.info("stayOnCurrentBrightnessTimeout is now zero")
 
 
@@ -219,7 +245,7 @@ def checkForDisplayWakeup(prevProximity, currProximity):
         return
 
     _state.stayOnCurrentBrightnessTimeout = const.scr_wakeupTimeoutInSeconds
-    jumpstartCurrentBrightness = const.scr_brightnessMaxValue / 5
+    jumpstartCurrentBrightness = int(const.scr_brightnessMaxValue / 6)
     _state.currentBrightness = \
         max(jumpstartCurrentBrightness, _state.currentBrightness)
     _state.wantedBrightness = const.scr_brightnessMaxValue
@@ -292,33 +318,37 @@ def _drawClock2(canvas, data, _state):
 
     canvas.brightness = _state.currentBrightness
 
-    baseClockPosX = 7
     # baseline y axis position can be between 13 and 44
     baseClockPosY = data.get("baseClockPosY", 28)
 
     # datetime format. Ref: http://strftime.org/  and https://pymotw.com/2/datetime/
     now = datetime.now()
     # remove '0' pad from hour's format
-    h_int = int(now.strftime("%-I"))
-    hXAxisAdj = {True: 4, False: 0}.get(h_int < 10)
-    h = "{}{}".format({True: " ", False: ""}.get(h_int < 10), h_int)
-    clock = h + ":" + now.strftime("%M")
+    clock = now.strftime("%-I:%M")
     amPm = now.strftime("%p").lower()
     clockColor, dateColor = \
         {"am": (green, red), "pm": (red, green)}.get(amPm, (blue, blue))
+    posX = getCenterPosX(canvas, font0, clock)
     # canvas, font, x, y, color, text
-    graphics.DrawText(canvas, font0,
-        baseClockPosX - hXAxisAdj, baseClockPosY, clockColor, clock)
+    graphics.DrawText(canvas, font0, posX, baseClockPosY, clockColor, clock)
 
     # Weekday
     weekday = now.strftime("%A")
-    graphics.DrawText(canvas, font1, baseClockPosX - 1, baseClockPosY + 9, blue, weekday)
+    posX = getCenterPosX(canvas, font1, weekday)
+    graphics.DrawText(canvas, font1, posX, baseClockPosY + 9, blue, weekday)
 
     # Date
-    d_int = int(now.strftime("%-d"))
-    d = "{}{}".format({True: " ", False: ""}.get(d_int < 10), d_int)
-    cal = d + now.strftime(" / %b")
-    graphics.DrawText(canvas, font1, baseClockPosX + 1, baseClockPosY + 18, dateColor, cal)
+    cal = now.strftime("%-d / %b")
+    posX = getCenterPosX(canvas, font1, cal)
+    graphics.DrawText(canvas, font1, posX, baseClockPosY + 18, dateColor, cal)
+
+
+def getCenterPosX(canvas, font, msg):
+    numberOfChars = len(msg)
+    pixelsUsed = numberOfChars * font.CharacterWidth(0)
+    if pixelsUsed >= canvas.width:
+        return 0
+    return int((canvas.width - pixelsUsed) / 2)
 
 # =============================================================================
 
@@ -327,11 +357,28 @@ def _enqueue_cmd(l):
     global _state
     lDill = dill.dumps(l)
     try:
-        _state.cmdq.put(lDill, False)
+        _state.cmdq.put_nowait(lDill)
     except queue.Full:
         logger.error("command queue is full: cannot add")
         return False
     return True
+
+
+# called from outside this module
+def do_handle_screen_stays_on(enable):
+    logger.debug("queuing screen stays on {}".format(enable))
+    params = [enable]
+    return _enqueue_cmd((_do_handle_screen_stays_on, params))
+
+
+def _do_handle_screen_stays_on(enable):
+    global _state
+    stayOnInDarkRoomFun = lambda x: True if x else False
+    _state.stayOnInDarkRoom = stayOnInDarkRoomFun(enable)
+    logger.info("stay on in dark room is now {}".format(_state.stayOnInDarkRoom))
+    # update wanted brightness to what lux has determined it to be?
+    if _state.useLuxToDetermineBrightness:
+        _notifyEventLuxUpdateRequest()
 
 
 # called from outside this module
@@ -361,18 +408,23 @@ def _do_handle_motion_lux(currLux):
     global _state
     # map lux values into a percentage. The brighter the room, the more
     # intensity we will need for the matrix display
-    currNormalizedLux = normalizedLux(currLux)
-    logger.debug("motion_lux raw {} set normalized from {} to {}".format(
-        currLux, _state.cachedNormalizedLux, currNormalizedLux))
-    _state.cachedNormalizedLux = currNormalizedLux
+    currNormalizedLux = normalizedLux(currLux, _state.stayOnInDarkRoom)
+    if _state.cachedNormalizedLux == currNormalizedLux:
+        logger.debug("motion_lux raw {} remains normalized as {}".format(
+            currLux, currNormalizedLux))
+    else:
+        logger.info("motion_lux raw {} set normalized from {} to {}".format(
+            currLux, _state.cachedNormalizedLux, currNormalizedLux))
+        _state.cachedNormalizedLux = currNormalizedLux
+
     if _state.useLuxToDetermineBrightness and \
        _state.stayOnCurrentBrightnessTimeout == 0:
         _state.wantedBrightness = _state.cachedNormalizedLux
 
 
-def normalizedLux(rawLux):
+def normalizedLux(rawLux, stayOnInDarkRoom):
     # exception case: if rawLux is less than dark room threshold turn display off
-    if rawLux <= const.motion_luxDarkRoomThreshold:
+    if rawLux <= const.motion_luxDarkRoomThreshold and not stayOnInDarkRoom:
         return const.scr_brightnessOff
     # make sure raw value falls within expected range
     x = min(const.motion_luxMaxValue, max(const.motion_luxMinValue, rawLux))

@@ -8,9 +8,10 @@ import os
 # need this because exported python path gets lost when invoking sudo
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
 
-#from bedclock import const  # noqa
+from bedclock import const  # noqa
 from bedclock import events  # noqa
 from bedclock import log  # noqa
+from bedclock import mqttclient  # noqa
 from bedclock import screen  # noqa
 from bedclock import motion  # noqa
 
@@ -25,11 +26,22 @@ class ProcessBase(multiprocessing.Process):
 
     def putEvent(self, event):
         try:
-            self.eventq.put(event, False)
+            self.eventq.put_nowait(event)
         except queue.Full:
             logger.error("Exiting: Queue is stuck, cannot add event: %s %s",
                          event.name, event.description)
             raise RuntimeError("Main process has a full event queue")
+
+
+class MqttclientProcess(ProcessBase):
+    def __init__(self, eventq):
+        ProcessBase.__init__(self, eventq)
+        mqttclient.do_init(self.putEvent)
+
+    def run(self):
+        logger.debug("mqttclient process started")
+        while True:
+            mqttclient.do_iterate()
 
 
 class MotionProcess(ProcessBase):
@@ -58,17 +70,36 @@ class ScreenProcess(ProcessBase):
 
 def processMotionLux(event):
     screen.do_handle_motion_lux(event.value)
+    mqttclient.do_handle_motion_lux(event.value)
+
+
+def processMotionDetected(_event):
+    mqttclient.do_motion_on()
 
 
 def processMotionProximity(event):
     screen.do_handle_motion_proximity(event.value)
+    if not event.value:
+        mqttclient.do_motion_off()
+
+
+def processLuxUpdateRequest(event):
+    logger.debug("Handling event {}".format(event.description))
+    motion.do_lux_report()
+
+
+def processScreenStaysOn(event):
+    logger.debug("Handling event {}".format(event.description))
+    screen.do_handle_screen_stays_on(event.value)
 
 
 def processEvent(event):
     # Based on the event, call lambda(s) to handle
     syncFunHandlers = {"MotionLux": [processMotionLux],
+                       "MotionDetected": [processMotionDetected],
                        "MotionProximity": [processMotionProximity],
-                       "MotionDetected": [None]}
+                       "LuxUpdateRequest": [processLuxUpdateRequest],
+                       "ScreenStaysOn": [processScreenStaysOn]}
     cmdFuns = syncFunHandlers.get(event.name)
     if not cmdFuns:
         logger.warning("Don't know how to process event %s: %s", event.name, event.description)
@@ -127,6 +158,8 @@ if __name__ == "__main__":
     log.initLogger()
     logger.debug("bedclock process started")
     eventq = multiprocessing.Queue(EVENTQ_SIZE)
+    if const.mqtt_enabled:
+        myProcesses.append(MqttclientProcess(eventq))
     myProcesses.append(MotionProcess(eventq))
     myProcesses.append(ScreenProcess(eventq))
     main()
