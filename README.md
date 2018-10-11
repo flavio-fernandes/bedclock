@@ -207,9 +207,10 @@ $ mosquitto_pub -h ${MQTT_BROKER} -t /bedclock/stay -r -n
 
 [![Bedclock Demo](https://img.youtube.com/vi/kgT8Nts2mAI/0.jpg)](https://www.youtube.com/watch?v=kgT8Nts2mAI "Bedclock Demo")
 
+[![Show-and-Tell Adafruit](https://img.youtube.com//vi/2VQixyqWGfE/0.jpg)](https://youtu.be/2VQixyqWGfE?t=584 "Bedclock Adafruit Show-and-Tell")
+
 #### TODO  :construction:
 
-* Present on Show-and-Tell
 * Expose knobs to make MQTT use SSL
 * Display weather :partly_sunny:
 * Add alarm :alarm_clock:

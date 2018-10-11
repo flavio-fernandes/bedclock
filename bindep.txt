@@ -1,3 +1,2 @@
-python3-venv
 python-smbus
 i2c-tools
