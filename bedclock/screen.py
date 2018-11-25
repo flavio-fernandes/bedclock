@@ -19,6 +19,7 @@ from bedclock import events  # noqa
 from bedclock import log  # noqa
 
 
+MAX_OUTSIDE_TEMPERATURE_AGE_IN_SECONDS = 1800
 CMDQ_SIZE = 100
 TIMERTICK_UNIT = 0.25  # 250ms (in seconds)
 _state = None
@@ -35,9 +36,11 @@ class State(object):
         self.fonts = []
         timer_tick_data = {
             'black': graphics.Color(0, 0, 0),
+            'white': graphics.Color(255, 255, 255),
+            'red': graphics.Color(255, 0, 0),
             'green': graphics.Color(0, 255, 0),
             'blue': graphics.Color(0, 0, 255),
-            'red': graphics.Color(255, 0, 0)
+            'yellow': graphics.Color(230, 230, 50),
         }
         self.timer_tick_data = timer_tick_data
 
@@ -56,6 +59,10 @@ class State(object):
         # is room is dark, the knob below dictates wheter screen
         # should go completely blank or not
         self.stayOnInDarkRoom = const.scr_stayOnInDarkRoomDefault
+
+        # outside temperature
+        self.cachedOutsideTemperature = None
+        self.cachedOutsideTemperatureAgeInSeconds = MAX_OUTSIDE_TEMPERATURE_AGE_IN_SECONDS
 
 # =============================================================================
 
@@ -113,7 +120,7 @@ def init_matrix():
     # https://github.com/hzeller/rpi-rgb-led-matrix/issues/679#issuecomment-423268899
     _state.matrix = RGBMatrix(options=options)
 
-    for fontFilename in ["10x20", "6x9"]:
+    for fontFilename in ["10x20", "6x9", "5x8"]:
         font = graphics.Font()
         font.LoadFont("{}/{}.bdf".format(const.scr_fonts_dir, fontFilename))
         _state.fonts.append(font)
@@ -159,6 +166,7 @@ def timer_tick_500ms():
 
 
 def timer_tick_1sec():
+    updateOutsideTemperatureAgeInSeconds()
     updateBrightnessTimeoutInSeconds()
     pass
 
@@ -226,6 +234,12 @@ def adjustBrightness():
             _enqueue_cmd((timer_tick, []))
 
 
+def updateOutsideTemperatureAgeInSeconds():
+    global _state
+    if _state.cachedOutsideTemperatureAgeInSeconds < MAX_OUTSIDE_TEMPERATURE_AGE_IN_SECONDS:
+        _state.cachedOutsideTemperatureAgeInSeconds += 1
+
+
 def updateBrightnessTimeoutInSeconds():
     global _state
     if _state.stayOnCurrentBrightnessTimeout > 0:
@@ -271,6 +285,10 @@ def updateMotionPixel(canvas=None):
         canvas.SetPixel(canvas.width - 1, canvas.height - 1, r, g, b)
         data["motionPixelIsTurnedOn"] = newMotionPixelIsTurnedOn
 
+    # draw a dot to indicate that stay on in dark is turned on
+    if _state.stayOnInDarkRoom:
+        canvas.SetPixel(0, 0, *getColorRGB('white'))
+
 
 def drawLineAnimation(canvas=None, counterIncr=1):
     global _state
@@ -303,6 +321,7 @@ def drawClock():
         canvas.Clear()
     if _state.currentBrightness != const.scr_brightnessOff:
         _drawClock2(canvas, data, _state)
+        _drawTemperature(canvas, data, _state)
     else:
         canvas.brightness = const.scr_brightnessMinValue
     updateMotionPixel(canvas)
@@ -341,6 +360,25 @@ def _drawClock2(canvas, data, _state):
     cal = now.strftime("%-d / %b")
     posX = getCenterPosX(canvas, font1, cal)
     graphics.DrawText(canvas, font1, posX, baseClockPosY + 18, dateColor, cal)
+
+
+def _drawTemperature(canvas, data, _state):
+    if not _state.cachedOutsideTemperature:
+        return
+    if _state.cachedOutsideTemperatureAgeInSeconds >= MAX_OUTSIDE_TEMPERATURE_AGE_IN_SECONDS:
+        return
+    _drawTemperature2(canvas, data, _state)
+
+
+def _drawTemperature2(canvas, data, _state):
+    font = _state.fonts[2]
+    color = data.get('yellow')
+    temperature = "{}F".format(_state.cachedOutsideTemperature)
+    posX = 1
+    # posY = 6
+    posY = canvas.height - 1
+    # canvas, font, x, y, color, text
+    graphics.DrawText(canvas, font, posX, posY, color, temperature)
 
 
 def getCenterPosX(canvas, font, msg):
@@ -432,6 +470,31 @@ def normalizedLux(rawLux, stayOnInDarkRoom):
     a, b = const.motion_luxMinValue, const.motion_luxMaxValue
     c, d = const.scr_brightnessMinValue, const.scr_brightnessMaxValue
     return int((x - a) / (b - a) * (d - c) + c)
+
+
+# called from outside this module
+def do_handle_outside_temperature(temperature):
+    #logger.debug("queuing outside temperature {}".format(temperature))
+    params = [temperature]
+    return _enqueue_cmd((_do_handle_outside_temperature, params))
+
+
+def _do_handle_outside_temperature(temperature):
+    global _state
+    _state.cachedOutsideTemperature = temperature
+    _state.cachedOutsideTemperatureAgeInSeconds = 0
+    logger.debug("outside temperature updated to {}".format(temperature))
+
+
+# =============================================================================
+
+
+def getColorRGB(color):
+    global _state
+    if isinstance(color, str):
+        data = _state.timer_tick_data
+        color = data.get('yellow')
+    return (color.red, color.green, color.blue)
 
 # =============================================================================
 
