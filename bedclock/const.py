@@ -2,14 +2,18 @@
 
 # options related to mqtt
 mqtt_broker_ip = "192.168.10.238"
-mqtt_enabled = False
+mqtt_enabled = True
 mqtt_topic_prefix = "bedclock"
 mqtt_topic_pub_light = "light"
 mqtt_topic_pub_motion = "motion"
 mqtt_topics_pub = {t: "/{}/{}".format(mqtt_topic_prefix, t) for t in [
         mqtt_topic_pub_light, mqtt_topic_pub_motion]}
 mqtt_topic_sub_stay = "stay"
-mqtt_topics_sub = {t: "/{}/{}".format(mqtt_topic_prefix, t) for t in [mqtt_topic_sub_stay]}
+mqtt_topic_sub_temperature = "temperature_outside"
+mqtt_topics_sub = {t: "/{}/{}".format(p, t) for p, t in [
+    (mqtt_topic_prefix, mqtt_topic_sub_stay),
+    ("sensor", mqtt_topic_sub_temperature),
+]}
 mqtt_value_enable = set(["on", "true", "enable", "enabled", "1", "up", "yes", "yeah", "yup", "y"])
 
 # options passed into rgb matrix

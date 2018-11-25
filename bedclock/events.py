@@ -37,3 +37,10 @@ class ScreenStaysOn(Base):
         Base.__init__(self,
                       "screen stays on {} requested by {}".format(enable, requester),
                       enable)
+
+
+class OutsideTemperature(Base):
+    def __init__(self, temperature, requester="anonymous"):
+        Base.__init__(self,
+                      "outside temperature update to {} by {}".format(temperature, requester),
+                      temperature)

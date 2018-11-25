@@ -93,13 +93,19 @@ def processScreenStaysOn(event):
     screen.do_handle_screen_stays_on(event.value)
 
 
+def processOutsideTemperature(event):
+    logger.debug("Handling event {}".format(event.description))
+    screen.do_handle_outside_temperature(event.value)
+
+
 def processEvent(event):
     # Based on the event, call lambda(s) to handle
     syncFunHandlers = {"MotionLux": [processMotionLux],
                        "MotionDetected": [processMotionDetected],
                        "MotionProximity": [processMotionProximity],
                        "LuxUpdateRequest": [processLuxUpdateRequest],
-                       "ScreenStaysOn": [processScreenStaysOn]}
+                       "ScreenStaysOn": [processScreenStaysOn],
+                       "OutsideTemperature": [processOutsideTemperature]}
     cmdFuns = syncFunHandlers.get(event.name)
     if not cmdFuns:
         logger.warning("Don't know how to process event %s: %s", event.name, event.description)

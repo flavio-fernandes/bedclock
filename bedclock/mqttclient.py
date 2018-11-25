@@ -111,10 +111,14 @@ def do_iterate():
 
 def _do_handle_mqtt_msg_stay(msg):
     enable = isinstance(msg, str) and msg.lower() in const.mqtt_value_enable
-    requester = os.path.split(__file__)[-1]
-    requester = requester.split('.py')[0]
-    event = events.ScreenStaysOn(enable, requester)
+    event = events.ScreenStaysOn(enable, _this_module())
     _notifyEvent(event)
+
+
+def _do_handle_mqtt_msg_temperature(temperature):
+    if temperature:
+        event = events.OutsideTemperature(temperature, _this_module())
+        _notifyEvent(event)
 
 
 def _do_handle_mqtt_msg(topic, payload):
@@ -129,7 +133,8 @@ def _do_handle_mqtt_msg(topic, payload):
         payload = payload.decode('ascii')
 
     tp = lambda x: const.mqtt_topics_sub.get(x)
-    msg_handlers = {tp(const.mqtt_topic_sub_stay): _do_handle_mqtt_msg_stay}
+    msg_handlers = {tp(const.mqtt_topic_sub_stay): _do_handle_mqtt_msg_stay,
+                    tp(const.mqtt_topic_sub_temperature): _do_handle_mqtt_msg_temperature}
 
     msg_handler = msg_handlers.get(topic)
     if msg_handler:
@@ -194,6 +199,13 @@ def do_handle_motion_lux(currLux):
     params = [const.mqtt_topic_pub_light, currLux]
     return _enqueue_cmd((_mqtt_publish_value, params))
 
+
+# =============================================================================
+
+
+def _this_module():
+    requester = os.path.split(__file__)[-1]
+    return requester.split('.py')[0]
 
 # =============================================================================
 
