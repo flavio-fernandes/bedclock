@@ -22,6 +22,7 @@ You can see more pictures related to this project using [this link :art:](https:
 * 8GB MicroSD Card
 * [Adafruit RGB Matrix Bonnet for Raspberry Pi](https://www.adafruit.com/product/3211)
 * [64x64 RGB LED Matrix - 2.5mm Pitch](https://www.adafruit.com/product/3649)
+* [Adafruit APDS9960 Proximity, Light, RGB, and Gesture Sensor](https://www.adafruit.com/product/3595)
 * [5V 10A switching power supply](https://www.adafruit.com/product/658)
 * **Optional:** [Console Cable for Raspberry Pi](https://www.adafruit.com/product/954)
 
