@@ -14,6 +14,11 @@ the main steps I took.
 
 You can see more pictures related to this project using [this link :art:](https://www.flickr.com/gp/38447095@N00/705C56)
 
+## Blog on Adafruit
+
+This README has been ported to Adafruit's learn page. If you prefer that format, here is the link for it:
+**[https://learn.adafruit.com/motion-controlled-matrix-bed-clock](https://learn.adafruit.com/motion-controlled-matrix-bed-clock)**
+
 ## Hardware
 
 #### The main hardware components used:
