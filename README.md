@@ -5,7 +5,7 @@
 
 My bedside clock got pushed to the floor and I kept losing track of time.
 
-![Old bedside clock](https://farm2.staticflickr.com/1855/29633788337_a27c736dea_z.jpg)
+![Old bedside clock](https://live.staticflickr.com/1855/29633788337_ae9a5f06e6_w.jpg)
 
 So I decided to build one and hang it on the headboard. This repo captures
 the main steps I took.
