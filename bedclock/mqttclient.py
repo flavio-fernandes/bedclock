@@ -115,6 +115,11 @@ def _do_handle_mqtt_msg_stay(msg):
     _notifyEvent(event)
 
 
+def _do_handle_mqtt_msg_msg(message):
+    event = events.DisplayMessage(message, _this_module())
+    _notifyEvent(event)
+
+
 def _do_handle_mqtt_msg_temperature(temperature):
     if temperature:
         event = events.OutsideTemperature(temperature, _this_module())
@@ -134,7 +139,8 @@ def _do_handle_mqtt_msg(topic, payload):
 
     tp = lambda x: const.mqtt_topics_sub.get(x)
     msg_handlers = {tp(const.mqtt_topic_sub_stay): _do_handle_mqtt_msg_stay,
-                    tp(const.mqtt_topic_sub_temperature): _do_handle_mqtt_msg_temperature}
+                    tp(const.mqtt_topic_sub_temperature): _do_handle_mqtt_msg_temperature,
+                    tp(const.mqtt_topic_sub_msg): _do_handle_mqtt_msg_msg}
 
     msg_handler = msg_handlers.get(topic)
     if msg_handler:

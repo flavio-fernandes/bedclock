@@ -64,6 +64,9 @@ class State(object):
         self.cachedOutsideTemperature = None
         self.cachedOutsideTemperatureAgeInSeconds = MAX_OUTSIDE_TEMPERATURE_AGE_IN_SECONDS
 
+        # display message
+        self.displayMessage = None
+
 # =============================================================================
 
 
@@ -322,6 +325,7 @@ def drawClock():
     if _state.currentBrightness != const.scr_brightnessOff:
         _drawClock2(canvas, data, _state)
         _drawTemperature(canvas, data, _state)
+        _drawDisplayMessage(canvas, data, _state)
     else:
         canvas.brightness = const.scr_brightnessMinValue
     updateMotionPixel(canvas)
@@ -381,6 +385,18 @@ def _drawTemperature2(canvas, data, _state):
     graphics.DrawText(canvas, font, posX, posY, color, temperature)
 
 
+def _drawDisplayMessage(canvas, data, _state):
+    if not _state.displayMessage:
+        return
+    font = _state.fonts[2]
+    color = data.get('white')
+    # posX = 0
+    posX = getCenterPosX(canvas, font, _state.displayMessage)
+    posY = 7
+    # canvas, font, x, y, color, text
+    graphics.DrawText(canvas, font, posX, posY, color, _state.displayMessage)
+
+
 def getCenterPosX(canvas, font, msg):
     numberOfChars = len(msg)
     pixelsUsed = numberOfChars * font.CharacterWidth(0)
@@ -417,6 +433,20 @@ def _do_handle_screen_stays_on(enable):
     # update wanted brightness to what lux has determined it to be?
     if _state.useLuxToDetermineBrightness:
         _notifyEventLuxUpdateRequest()
+
+
+# called from outside this module
+def do_handle_display_message(message):
+    logger.debug("queuing screen display message {}".format(message))
+    params = [message]
+    return _enqueue_cmd((_do_handle_display_message, params))
+
+
+def _do_handle_display_message(message):
+    global _state
+    _state.displayMessage = message
+    logger.info("screen display message is now '{}'".format(_state.displayMessage))
+    drawClock()
 
 
 # called from outside this module

@@ -44,3 +44,10 @@ class OutsideTemperature(Base):
         Base.__init__(self,
                       "outside temperature update to {} by {}".format(temperature, requester),
                       temperature)
+
+
+class DisplayMessage(Base):
+    def __init__(self, message, requester="anonymous"):
+        Base.__init__(self,
+                      "set screen display message to '{}' by {}".format(message, requester),
+                      message)
