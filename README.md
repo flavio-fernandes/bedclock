@@ -5,7 +5,7 @@
 
 My bedside clock got pushed to the floor and I kept losing track of time.
 
-![Old bedside clock](https://farm2.staticflickr.com/1855/29633788337_a27c736dea_z.jpg)
+![Old bedside clock](https://live.staticflickr.com/1855/29633788337_ae9a5f06e6_w.jpg)
 
 So I decided to build one and hang it on the headboard. This repo captures
 the main steps I took.
@@ -13,6 +13,11 @@ the main steps I took.
 ![RGB LED Matrix clock](https://farm2.staticflickr.com/1923/29916857047_9f3a571fc8_z.jpg)
 
 You can see more pictures related to this project using [this link :art:](https://www.flickr.com/gp/38447095@N00/705C56)
+
+## Blog on Adafruit
+
+This README has been ported to Adafruit's learn page. If you prefer that format, here is the link for it:
+**[https://learn.adafruit.com/motion-controlled-matrix-bed-clock](https://learn.adafruit.com/motion-controlled-matrix-bed-clock)**
 
 ## Hardware
 
@@ -22,6 +27,7 @@ You can see more pictures related to this project using [this link :art:](https:
 * 8GB MicroSD Card
 * [Adafruit RGB Matrix Bonnet for Raspberry Pi](https://www.adafruit.com/product/3211)
 * [64x64 RGB LED Matrix - 2.5mm Pitch](https://www.adafruit.com/product/3649)
+* [Adafruit APDS9960 Proximity, Light, RGB, and Gesture Sensor](https://www.adafruit.com/product/3595)
 * [5V 10A switching power supply](https://www.adafruit.com/product/658)
 * **Optional:** [Console Cable for Raspberry Pi](https://www.adafruit.com/product/954)
 
