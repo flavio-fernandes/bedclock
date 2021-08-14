@@ -173,7 +173,7 @@ def do_iterate_proximity():
         return
 
     oldProximity = _state.currProximity
-    newProximity = _state.apds.proximity()
+    newProximity = _state.apds.proximity
     _state.currRawProximity = newProximity
 
     # if proximity is less than min threshold, set it to 0
