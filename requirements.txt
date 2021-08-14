@@ -4,6 +4,6 @@ six
 paho-mqtt
 
 # The following requirments only work on armv6l (Like a Raspberry Pi)
-RPI.GPIO ; platform_machine != 'x86_64'
-adafruit-blinka ; platform_machine != 'x86_64'
-adafruit-circuitpython-apds9960 ; platform_machine != 'x86_64'
+RPI.GPIO>=0.7.0,<1.0.0 ; platform_machine != 'x86_64'
+adafruit-blinka>=6.13.0,<7 ; platform_machine != 'x86_64'
+adafruit-circuitpython-apds9960>=2.2.7,<3 ; platform_machine != 'x86_64'
