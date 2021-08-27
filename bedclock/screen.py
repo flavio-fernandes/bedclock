@@ -230,6 +230,9 @@ def adjustBrightness():
     if _state.currentBrightness == _state.wantedBrightness:
         logger.debug("curr brightness reached target value of {}".format(
             _state.wantedBrightness))
+        # Reaching target also has side effect of forcing a draw of the clock face
+        if _state.currentBrightness:
+            drawClock()
     else:
         # queue an event to self, so we are not bound to wait for TIMERTICK_UNIT timeout.
         # Note that this will cause timer_tick to be called twice in do_iterate(). No biggie.
