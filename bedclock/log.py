@@ -61,4 +61,3 @@ def log_to_console():
 
 def set_log_level_debug():
     getLogger().setLevel(logging.DEBUG)
-

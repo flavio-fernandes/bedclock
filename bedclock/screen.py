@@ -12,12 +12,11 @@ import sys
 from rgbmatrix import graphics, RGBMatrix, RGBMatrixOptions
 
 # need this because exported python path gets lost when invoking sudo
-sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
+sys.path.append(os.path.abspath(os.path.dirname(__file__) + "/.."))
 
 from bedclock import const  # noqa
 from bedclock import events  # noqa
 from bedclock import log  # noqa
-
 
 MAX_OUTSIDE_TEMPERATURE_AGE_IN_SECONDS = 1800
 CMDQ_SIZE = 100
@@ -35,12 +34,12 @@ class State(object):
         self.timer_tick_services = []
         self.fonts = []
         timer_tick_data = {
-            'black': graphics.Color(0, 0, 0),
-            'white': graphics.Color(255, 255, 255),
-            'red': graphics.Color(255, 0, 0),
-            'green': graphics.Color(0, 255, 0),
-            'blue': graphics.Color(0, 0, 255),
-            'yellow': graphics.Color(230, 230, 50),
+            "black": graphics.Color(0, 0, 0),
+            "white": graphics.Color(255, 255, 255),
+            "red": graphics.Color(255, 0, 0),
+            "green": graphics.Color(0, 255, 0),
+            "blue": graphics.Color(0, 0, 255),
+            "yellow": graphics.Color(230, 230, 50),
         }
         self.timer_tick_data = timer_tick_data
 
@@ -62,10 +61,13 @@ class State(object):
 
         # outside temperature
         self.cachedOutsideTemperature = None
-        self.cachedOutsideTemperatureAgeInSeconds = MAX_OUTSIDE_TEMPERATURE_AGE_IN_SECONDS
+        self.cachedOutsideTemperatureAgeInSeconds = (
+            MAX_OUTSIDE_TEMPERATURE_AGE_IN_SECONDS
+        )
 
         # display message
         self.displayMessage = None
+
 
 # =============================================================================
 
@@ -76,6 +78,7 @@ def do_init(queueEventFun=None):
 
     logger.debug("init called")
 
+
 # =============================================================================
 
 
@@ -85,14 +88,16 @@ def _notifyEvent(event):
         logger.debug("generating event: {}".format(event.name))
         _state.queueEventFun(event)
 
+
 # =============================================================================
 
 
 def _notifyEventLuxUpdateRequest():
     requester = os.path.split(__file__)[-1]
-    requester = requester.split('.py')[0]
+    requester = requester.split(".py")[0]
     event = events.LuxUpdateRequest(requester)
     _notifyEvent(event)
+
 
 # =============================================================================
 
@@ -130,6 +135,7 @@ def init_matrix():
 
     logger.debug("matrix canvas initialized")
 
+
 # =============================================================================
 
 
@@ -159,7 +165,7 @@ def timer_tick_always():
 
 
 def timer_tick_250ms():
-    #drawLineAnimation()
+    # drawLineAnimation()
     updateMotionPixel()
     pass
 
@@ -187,8 +193,9 @@ class TimerTickService(object):
     def __init__(self, intervalInMilliseconds, fun, now=datetime.now()):
         self.intervalInMilliseconds = intervalInMilliseconds
         self.fun = fun
-        self.nextExpiration = datetime.now() + \
-            timedelta(0, 0, intervalInMilliseconds * 1000)
+        self.nextExpiration = datetime.now() + timedelta(
+            0, 0, intervalInMilliseconds * 1000
+        )
 
 
 def init_timer_ticks():
@@ -198,7 +205,7 @@ def init_timer_ticks():
         TimerTickService(500, timer_tick_500ms),
         TimerTickService(1000, timer_tick_1sec),
         TimerTickService(15000, timer_tick_15sec),
-        TimerTickService(60000, timer_tick_1min)
+        TimerTickService(60000, timer_tick_1min),
     ]
 
 
@@ -210,8 +217,10 @@ def timer_tick():
         now = datetime.now()
         if timer_tick_service.nextExpiration <= now:
             timer_tick_service.fun()
-            timer_tick_service.nextExpiration = now + \
-                timedelta(0, 0, timer_tick_service.intervalInMilliseconds * 1000)
+            timer_tick_service.nextExpiration = now + timedelta(
+                0, 0, timer_tick_service.intervalInMilliseconds * 1000
+            )
+
 
 # ----------------------------------------------------------------------
 
@@ -228,8 +237,9 @@ def adjustBrightness():
     drawClock()
 
     if _state.currentBrightness == _state.wantedBrightness:
-        logger.debug("curr brightness reached target value of {}".format(
-            _state.wantedBrightness))
+        logger.debug(
+            "curr brightness reached target value of {}".format(_state.wantedBrightness)
+        )
         # Reaching target also has side effect of forcing a draw of the clock face
         if _state.currentBrightness:
             drawClock()
@@ -242,7 +252,10 @@ def adjustBrightness():
 
 def updateOutsideTemperatureAgeInSeconds():
     global _state
-    if _state.cachedOutsideTemperatureAgeInSeconds < MAX_OUTSIDE_TEMPERATURE_AGE_IN_SECONDS:
+    if (
+        _state.cachedOutsideTemperatureAgeInSeconds
+        < MAX_OUTSIDE_TEMPERATURE_AGE_IN_SECONDS
+    ):
         _state.cachedOutsideTemperatureAgeInSeconds += 1
 
 
@@ -266,8 +279,7 @@ def checkForDisplayWakeup(prevProximity, currProximity):
 
     _state.stayOnCurrentBrightnessTimeout = const.scr_wakeupTimeoutInSeconds
     jumpstartCurrentBrightness = int(const.scr_brightnessMaxValue / 6)
-    _state.currentBrightness = \
-        max(jumpstartCurrentBrightness, _state.currentBrightness)
+    _state.currentBrightness = max(jumpstartCurrentBrightness, _state.currentBrightness)
     _state.wantedBrightness = const.scr_brightnessMaxValue
     adjustBrightness()
     logger.info("woke screen up")
@@ -293,7 +305,7 @@ def updateMotionPixel(canvas=None):
 
     # draw a dot to indicate that stay on in dark is turned on
     if _state.stayOnInDarkRoom:
-        canvas.SetPixel(0, 0, *getColorRGB('white'))
+        canvas.SetPixel(0, 0, *getColorRGB("white"))
 
 
 def drawLineAnimation(canvas=None, counterIncr=1):
@@ -303,15 +315,17 @@ def drawLineAnimation(canvas=None, counterIncr=1):
         canvas = _state.matrix
     data = _state.timer_tick_data
 
-    drawLineAnimationCounter = data.get('drawLineAnimationCounter', 1)
-    data['drawLineAnimationCounter'] = drawLineAnimationCounter + counterIncr
-    red = data.get('red')
+    drawLineAnimationCounter = data.get("drawLineAnimationCounter", 1)
+    data["drawLineAnimationCounter"] = drawLineAnimationCounter + counterIncr
+    red = data.get("red")
 
     if drawLineAnimationCounter >= canvas.height:
-        data['drawLineAnimationCounter'] = 0
-        graphics.DrawLine(canvas, 0, 0, 0, canvas.height, data.get('black'))
+        data["drawLineAnimationCounter"] = 0
+        graphics.DrawLine(canvas, 0, 0, 0, canvas.height, data.get("black"))
     else:
-        graphics.DrawLine(canvas, 0, 0, 0, drawLineAnimationCounter % canvas.height, red)
+        graphics.DrawLine(
+            canvas, 0, 0, 0, drawLineAnimationCounter % canvas.height, red
+        )
 
 
 def drawClock():
@@ -338,9 +352,9 @@ def drawClock():
 def _drawClock2(canvas, data, _state):
     font0 = _state.fonts[0]
     font1 = _state.fonts[1]
-    green = data.get('green')
-    blue = data.get('blue')
-    red = data.get('red')
+    green = data.get("green")
+    blue = data.get("blue")
+    red = data.get("red")
 
     canvas.brightness = _state.currentBrightness
 
@@ -352,8 +366,9 @@ def _drawClock2(canvas, data, _state):
     # remove '0' pad from hour's format
     clock = now.strftime("%-I:%M")
     amPm = now.strftime("%p").lower()
-    clockColor, dateColor = \
-        {"am": (green, red), "pm": (red, green)}.get(amPm, (blue, blue))
+    clockColor, dateColor = {"am": (green, red), "pm": (red, green)}.get(
+        amPm, (blue, blue)
+    )
     posX = getCenterPosX(canvas, font0, clock)
     # canvas, font, x, y, color, text
     graphics.DrawText(canvas, font0, posX, baseClockPosY, clockColor, clock)
@@ -372,14 +387,17 @@ def _drawClock2(canvas, data, _state):
 def _drawTemperature(canvas, data, _state):
     if not _state.cachedOutsideTemperature:
         return
-    if _state.cachedOutsideTemperatureAgeInSeconds >= MAX_OUTSIDE_TEMPERATURE_AGE_IN_SECONDS:
+    if (
+        _state.cachedOutsideTemperatureAgeInSeconds
+        >= MAX_OUTSIDE_TEMPERATURE_AGE_IN_SECONDS
+    ):
         return
     _drawTemperature2(canvas, data, _state)
 
 
 def _drawTemperature2(canvas, data, _state):
     font = _state.fonts[2]
-    color = data.get('yellow')
+    color = data.get("yellow")
     temperature = "{}F".format(_state.cachedOutsideTemperature)
     posX = 1
     # posY = 6
@@ -392,7 +410,7 @@ def _drawDisplayMessage(canvas, data, _state):
     if not _state.displayMessage:
         return
     font = _state.fonts[2]
-    color = data.get('white')
+    color = data.get("white")
     # posX = 0
     posX = getCenterPosX(canvas, font, _state.displayMessage)
     posY = 7
@@ -406,6 +424,7 @@ def getCenterPosX(canvas, font, msg):
     if pixelsUsed >= canvas.width:
         return 0
     return int((canvas.width - pixelsUsed) / 2)
+
 
 # =============================================================================
 
@@ -462,8 +481,9 @@ def do_handle_motion_proximity(currProximity=0):
 def _do_handle_motion_proximity(currProximity):
     global _state
     prevProximity = _state.cachedProximity
-    logger.debug("motion_proximity set from {} to {}".format(
-        prevProximity, currProximity))
+    logger.debug(
+        "motion_proximity set from {} to {}".format(prevProximity, currProximity)
+    )
     _state.cachedProximity = currProximity
     checkForDisplayWakeup(prevProximity, currProximity)
 
@@ -481,15 +501,23 @@ def _do_handle_motion_lux(currLux):
     # intensity we will need for the matrix display
     currNormalizedLux = normalizedLux(currLux, _state.stayOnInDarkRoom)
     if _state.cachedNormalizedLux == currNormalizedLux:
-        logger.debug("motion_lux raw {} remains normalized as {}".format(
-            currLux, currNormalizedLux))
+        logger.debug(
+            "motion_lux raw {} remains normalized as {}".format(
+                currLux, currNormalizedLux
+            )
+        )
     else:
-        logger.info("motion_lux raw {} set normalized from {} to {}".format(
-            currLux, _state.cachedNormalizedLux, currNormalizedLux))
+        logger.info(
+            "motion_lux raw {} set normalized from {} to {}".format(
+                currLux, _state.cachedNormalizedLux, currNormalizedLux
+            )
+        )
         _state.cachedNormalizedLux = currNormalizedLux
 
-    if _state.useLuxToDetermineBrightness and \
-       _state.stayOnCurrentBrightnessTimeout == 0:
+    if (
+        _state.useLuxToDetermineBrightness
+        and _state.stayOnCurrentBrightnessTimeout == 0
+    ):
         _state.wantedBrightness = _state.cachedNormalizedLux
 
 
@@ -507,7 +535,7 @@ def normalizedLux(rawLux, stayOnInDarkRoom):
 
 # called from outside this module
 def do_handle_outside_temperature(temperature):
-    #logger.debug("queuing outside temperature {}".format(temperature))
+    # logger.debug("queuing outside temperature {}".format(temperature))
     params = [temperature]
     return _enqueue_cmd((_do_handle_outside_temperature, params))
 
@@ -526,8 +554,9 @@ def getColorRGB(color):
     global _state
     if isinstance(color, str):
         data = _state.timer_tick_data
-        color = data.get('yellow')
+        color = data.get("yellow")
     return (color.red, color.green, color.blue)
+
 
 # =============================================================================
 
@@ -537,6 +566,7 @@ def _signal_handler(signal, frame):
     logger.info("process terminated")
     stop_trigger = True
     sys.exit(0)
+
 
 # =============================================================================
 

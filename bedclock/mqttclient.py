@@ -13,7 +13,6 @@ from bedclock import const
 from bedclock import events
 from bedclock import log
 
-
 CMDQ_SIZE = 10  # max pending events
 CMDQ_GET_TIMEOUT = 3600  # seconds
 TOPIC_QOS = 1
@@ -30,13 +29,15 @@ class State(object):
         self.mqtt_broker_ip = mqtt_broker_ip
         self.mqtt_client = None
 
+
 # =============================================================================
 
 
 def do_init(queueEventFun=None, mqtt_broker_ip=const.mqtt_broker_ip):
     global _state
     _state = State(queueEventFun, mqtt_broker_ip)
-    #logger.debug("mqttclient init called")
+    # logger.debug("mqttclient init called")
+
 
 # =============================================================================
 
@@ -47,13 +48,18 @@ def _notifyEvent(event):
         logger.debug("generating event: {}".format(event.name))
         _state.queueEventFun(event)
 
+
 # =============================================================================
 
 
 def client_connect_callback(client, userdata, flags_dict, rc):
     if rc != mqtt.MQTT_ERR_SUCCESS:
-        logger.warning("client connect failed with flags %s rc %s %s",
-                       flags_dict, rc, mqtt.error_string(rc))
+        logger.warning(
+            "client connect failed with flags %s rc %s %s",
+            flags_dict,
+            rc,
+            mqtt.error_string(rc),
+        )
         return
     logger.info("client connected with flags %s rc %s", flags_dict, rc)
     bedclock_topics = [(t, TOPIC_QOS) for t in const.mqtt_topics_sub.values()]
@@ -79,6 +85,7 @@ def _setup_mqtt_client(broker_ip):
     except Exception as e:
         logger.info("mqtt client setup did not work %s", e)
     return None
+
 
 # =============================================================================
 
@@ -106,6 +113,7 @@ def do_iterate():
     except (KeyboardInterrupt, SystemExit):
         pass
 
+
 # =============================================================================
 
 
@@ -127,7 +135,7 @@ def _do_handle_mqtt_msg_temperature(temperature):
 
 
 def _do_handle_mqtt_msg(topic, payload):
-    #logger.debug("received mqtt message %s %s", topic, payload)
+    # logger.debug("received mqtt message %s %s", topic, payload)
 
     # paranoid: ignore big payloads
     payloadSize = sys.getsizeof(payload)
@@ -135,12 +143,14 @@ def _do_handle_mqtt_msg(topic, payload):
         logger.warning("ignoring msg for {}: {} payload too big", topic, payloadSize)
         return
     if isinstance(payload, bytes):
-        payload = payload.decode('ascii')
+        payload = payload.decode("ascii")
 
     tp = lambda x: const.mqtt_topics_sub.get(x)
-    msg_handlers = {tp(const.mqtt_topic_sub_stay): _do_handle_mqtt_msg_stay,
-                    tp(const.mqtt_topic_sub_temperature): _do_handle_mqtt_msg_temperature,
-                    tp(const.mqtt_topic_sub_msg): _do_handle_mqtt_msg_msg}
+    msg_handlers = {
+        tp(const.mqtt_topic_sub_stay): _do_handle_mqtt_msg_stay,
+        tp(const.mqtt_topic_sub_temperature): _do_handle_mqtt_msg_temperature,
+        tp(const.mqtt_topic_sub_msg): _do_handle_mqtt_msg_msg,
+    }
 
     msg_handler = msg_handlers.get(topic)
     if msg_handler:
@@ -166,6 +176,7 @@ def _mqtt_publish_value(publish_topic_key, newValue):
         logger.error("client failed publish mqtt topic %s %s %s", topic, newValue, e)
         return
     logger.debug("published mqtt topic %s %s", topic, newValue)
+
 
 # =============================================================================
 
@@ -211,7 +222,8 @@ def do_handle_motion_lux(currLux):
 
 def _this_module():
     requester = os.path.split(__file__)[-1]
-    return requester.split('.py')[0]
+    return requester.split(".py")[0]
+
 
 # =============================================================================
 
@@ -221,6 +233,7 @@ def _signal_handler(signal, frame):
     logger.info("process terminated")
     stop_trigger = True
     sys.exit(0)
+
 
 # =============================================================================
 
