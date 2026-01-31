@@ -81,6 +81,9 @@ Simply read and take all the steps mentioned in the awesome [page that Ladyada w
 Once you get the hardware part done, this is what you need to run:
 
 ```
+sudo apt-get install -y git i2c-tools \
+  python3-dev python3-pillow python3-setuptools cython3
+
 cd && \
 curl https://raw.githubusercontent.com/adafruit/Raspberry-Pi-Installer-Scripts/master/rgb-matrix.sh >rgb-matrix.sh
 sudo bash rgb-matrix.sh  ; # wait a while and reboot
@@ -92,12 +95,26 @@ At this point, you should be able to run the demos that are added as part of the
 cd ~/rpi-rgb-led-matrix/examples-api-use
 
 ROTATE=180
-TIMEOUT='-t 10'
+TIMEOUT='10s'
+PARAMS='--led-rows=64 --led-cols=64 --led-brightness=88'
+PARAMS+=' --led-gpio-mapping=adafruit-hat'
 for X in 0 {3..11} ; do \
-     PARAMS='--led-rows=64 --led-cols=64 --led-brightness=88'
-     sudo ./demo ${PARAMS} ${TIMEOUT} --led-pixel-mapper="Rotate:${ROTATE}" -D${X}
+     sudo timeout ${TIMEOUT} \
+          ./demo ${PARAMS} --led-pixel-mapper="Rotate:${ROTATE}" -D${X}
      sleep 0.3
 done
+```
+
+Create a .pth file so Python always includes a path to rgbmatrix
+
+```
+SITE_DIR="$(sudo python3 -c 'import site; print(site.getsitepackages()[0])')"
+
+[ -n "$SITE_DIR" ] && \
+  echo "/home/pi/rpi-rgb-led-matrix/bindings/python" | \
+    sudo tee "${SITE_DIR}/rgbmatrix.pth" >/dev/null
+
+sudo python3 -c 'import rgbmatrix; print("ok:", rgbmatrix)' || echo FAILED
 ```
 
 ###### Remove/disable unnecessary services
@@ -107,9 +124,8 @@ These were the ones I did on my setup, based on
 [Henner](https://github.com/hzeller/rpi-rgb-led-matrix/tree/814b79b5696d32dd1140304b41a1ec0068bb271a#use-minimal-raspbian-distribution)'s advice:
 
 ```
-sudo systemctl disable avahi-daemon && \
-sudo systemctl stop avahi-daemon && \
-sudo apt-get remove -y bluez bluez-firmware pi-bluetooth triggerhappy && \
+sudo systemctl disable --now avahi-daemon avahi-daemon.socket && \
+sudo apt-get remove -y bluez bluez-firmware && \
 echo ok
 ```
 
@@ -120,7 +136,7 @@ Follow the [steps documented here](https://learn.adafruit.com/circuitpython-on-r
 The commands I used were:
 
 ```
-sudo apt-get install -y python-smbus i2c-tools
+sudo apt-get install -y i2c-tools
 
 # Ensure i2c device is present
 ls /dev/i2c*  && echo ok || echo bad error cannot see i2c
@@ -137,7 +153,8 @@ BRANCH=adafruit
 cd && \
 git clone -b ${BRANCH} https://github.com/flavio-fernandes/bedclock.git  bedclock.git
 
-cd ~/bedclock.git && sudo -H pip3 install --upgrade -r ./requirements.txt
+
+cd ~/bedclock.git && sudo -H pip3 install --break-system-packages --upgrade -r ./requirements.txt
 ```
 
 Install and enable systemd service, which will start bedclock application automatically upon reboot:
@@ -156,7 +173,7 @@ You can monitor what is happening with the app by looking at the log or
 ```
 sudo systemctl status bedclock.service
 
-tail -F ~/bedclock.git/syslog.log | grep bedclock
+sudo journalctl -u bedclock.service --follow
 ```
 
 ###### Customize
