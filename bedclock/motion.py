@@ -38,6 +38,7 @@ class State(object):
         self.luxNotifyEnabled = False
         self.proximityNotifyEnabled = False
 
+
 # =============================================================================
 
 
@@ -48,6 +49,7 @@ def ms_sleep(value):
 def on_off_str(boolValue):
     return {True: "on"}.get(boolValue, "off")
 
+
 # =============================================================================
 
 
@@ -55,6 +57,7 @@ def do_init(queueEventFun=None):
     global _state
     _state = State(queueEventFun)
     # logger.debug("init called")
+
 
 # =============================================================================
 
@@ -64,6 +67,7 @@ def _notifyEvent(event):
     if _state.queueEventFun:
         logger.debug("generating event: {}".format(event.name))
         _state.queueEventFun(event)
+
 
 # =============================================================================
 
@@ -78,6 +82,7 @@ def init_apds():
 
     _state.apds = apds
     logger.info("motion sensor initialized")
+
 
 # =============================================================================
 
@@ -109,6 +114,7 @@ def do_iterate():
     do_iterate_light()
     do_iterate_proximity()
 
+
 # =============================================================================
 
 
@@ -138,7 +144,9 @@ def do_iterate_light():
         sendLuxEvent = True
     elif int(tdelta.total_seconds()) > const.motion_luxReportPeriodInSeconds:
         sendLuxEvent = True
-    elif _state.currLux >= const.motion_luxHighWatermark and not _state.luxAboveWatermark:
+    elif (
+        _state.currLux >= const.motion_luxHighWatermark and not _state.luxAboveWatermark
+    ):
         _state.luxAboveWatermark = True
         sendLuxEvent = True
     elif _state.currLux <= const.motion_luxLowWatermark and _state.luxAboveWatermark:
@@ -158,6 +166,7 @@ def do_iterate_light():
     if _state.luxNotifyEnabled:
         event = events.MotionLux(_state.currLux)
         _notifyEvent(event)
+
 
 # =============================================================================
 
@@ -181,11 +190,14 @@ def do_iterate_proximity():
         newProximity = 0
     if abs(newProximity - _state.currProximity) <= 2:
         # too small of a change... filter it out, unless this is going to 0
-        if (_state.currProximity == newProximity or newProximity != 0):
+        if _state.currProximity == newProximity or newProximity != 0:
             return
 
-    logger.debug("proximity update: from {} to {} (raw {})".format(
-        _state.currProximity, newProximity, _state.currRawProximity))
+    logger.debug(
+        "proximity update: from {} to {} (raw {})".format(
+            _state.currProximity, newProximity, _state.currRawProximity
+        )
+    )
 
     _state.currProximity = newProximity
     _state.currProximityDampenTimestamp = now
@@ -201,6 +213,7 @@ def do_iterate_proximity():
         if oldProximity == 0 and newProximity > 2:
             event = events.MotionDetected()
             _notifyEvent(event)
+
 
 # =============================================================================
 
@@ -254,7 +267,9 @@ def _do_lux_notify_onoff(newValue):
 
 
 def _do_motion_notify_onoff(newValue):
-    return _do_common_notify_onoff(_do_handle_notify_admin_proximity, "motion", newValue)
+    return _do_common_notify_onoff(
+        _do_handle_notify_admin_proximity, "motion", newValue
+    )
 
 
 def _do_common_notify_onoff(handle_notify_admin_fun, funName, newValue):
@@ -274,6 +289,7 @@ def _do_handle_notify_admin_lux(newValue):
     logger.debug("notify lux is now {}".format(on_off_str(newValue)))
     _state.luxNotifyEnabled = newValue
 
+
 # =============================================================================
 
 
@@ -282,6 +298,7 @@ def _signal_handler(signal, frame):
     logger.info("process terminated")
     stop_trigger = True
     sys.exit(0)
+
 
 # =============================================================================
 

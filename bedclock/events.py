@@ -10,16 +10,16 @@ class Base(object):
 
 class MotionLux(Base):
     def __init__(self, currLux):
-        Base.__init__(self,
-                      "motion detector current lux is {}".format(currLux),
-                      currLux)
+        Base.__init__(
+            self, "motion detector current lux is {}".format(currLux), currLux
+        )
 
 
 class MotionProximity(Base):
     def __init__(self, currProximity):
-        Base.__init__(self,
-                      "motion detector proximity at {}".format(currProximity),
-                      currProximity)
+        Base.__init__(
+            self, "motion detector proximity at {}".format(currProximity), currProximity
+        )
 
 
 class MotionDetected(Base):
@@ -34,6 +34,6 @@ class LuxUpdateRequest(Base):
 
 class ScreenStaysOn(Base):
     def __init__(self, enable, requester="anonymous"):
-        Base.__init__(self,
-                      "screen stays on {} requested by {}".format(enable, requester),
-                      enable)
+        Base.__init__(
+            self, "screen stays on {} requested by {}".format(enable, requester), enable
+        )

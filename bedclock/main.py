@@ -6,7 +6,7 @@ import sys
 import os
 
 # need this because exported python path gets lost when invoking sudo
-sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
+sys.path.append(os.path.abspath(os.path.dirname(__file__) + "/.."))
 
 from bedclock import const  # noqa
 from bedclock import events  # noqa
@@ -28,8 +28,11 @@ class ProcessBase(multiprocessing.Process):
         try:
             self.eventq.put_nowait(event)
         except queue.Full:
-            logger.error("Exiting: Queue is stuck, cannot add event: %s %s",
-                         event.name, event.description)
+            logger.error(
+                "Exiting: Queue is stuck, cannot add event: %s %s",
+                event.name,
+                event.description,
+            )
             raise RuntimeError("Main process has a full event queue")
 
 
@@ -95,14 +98,18 @@ def processScreenStaysOn(event):
 
 def processEvent(event):
     # Based on the event, call lambda(s) to handle
-    syncFunHandlers = {"MotionLux": [processMotionLux],
-                       "MotionDetected": [processMotionDetected],
-                       "MotionProximity": [processMotionProximity],
-                       "LuxUpdateRequest": [processLuxUpdateRequest],
-                       "ScreenStaysOn": [processScreenStaysOn]}
+    syncFunHandlers = {
+        "MotionLux": [processMotionLux],
+        "MotionDetected": [processMotionDetected],
+        "MotionProximity": [processMotionProximity],
+        "LuxUpdateRequest": [processLuxUpdateRequest],
+        "ScreenStaysOn": [processScreenStaysOn],
+    }
     cmdFuns = syncFunHandlers.get(event.name)
     if not cmdFuns:
-        logger.warning("Don't know how to process event %s: %s", event.name, event.description)
+        logger.warning(
+            "Don't know how to process event %s: %s", event.name, event.description
+        )
         return
     for cmdFun in cmdFuns:
         if cmdFun is not None:
@@ -113,7 +120,7 @@ def processEvents(timeout):
     global stop_trigger
     try:
         event = eventq.get(True, timeout)
-        #logger.debug("Process event for %s", type(event))
+        # logger.debug("Process event for %s", type(event))
         if isinstance(event, events.Base):
             processEvent(event)
         else:
