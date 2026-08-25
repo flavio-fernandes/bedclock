@@ -12,6 +12,7 @@ import time
 from bedclock import const
 from bedclock import events
 from bedclock import log
+from bedclock import systemstats
 
 CMDQ_SIZE = 10  # max pending events
 CMDQ_GET_TIMEOUT = 3600  # seconds
@@ -23,19 +24,23 @@ _state = None
 
 
 class State(object):
-    def __init__(self, queueEventFun, mqtt_broker_ip):
+    def __init__(self, queueEventFun, mqtt_broker_ip, monotonic_clock=None):
         self.queueEventFun = queueEventFun  # queue for output events
         self.cmdq = multiprocessing.Queue(CMDQ_SIZE)  # queue for input commands
         self.mqtt_broker_ip = mqtt_broker_ip
         self.mqtt_client = None
+        self.monotonic_clock = time.monotonic if monotonic_clock is None else monotonic_clock
+        self.next_oper_state_report = (
+            self.monotonic_clock() + const.oper_stateReportPeriodInSeconds
+        )
 
 
 # =============================================================================
 
 
-def do_init(queueEventFun=None, mqtt_broker_ip=const.mqtt_broker_ip):
+def do_init(queueEventFun=None, mqtt_broker_ip=const.mqtt_broker_ip, monotonic_clock=None):
     global _state
-    _state = State(queueEventFun, mqtt_broker_ip)
+    _state = State(queueEventFun, mqtt_broker_ip, monotonic_clock)
     # logger.debug("mqttclient init called")
 
 
@@ -43,7 +48,6 @@ def do_init(queueEventFun=None, mqtt_broker_ip=const.mqtt_broker_ip):
 
 
 def _notifyEvent(event):
-    global _state
     if _state.queueEventFun:
         logger.debug("generating event: {}".format(event.name))
         _state.queueEventFun(event)
@@ -91,7 +95,6 @@ def _setup_mqtt_client(broker_ip):
 
 
 def do_iterate():
-    global _state
 
     if not _state.mqtt_client:
         _state.mqtt_client = _setup_mqtt_client(_state.mqtt_broker_ip)
@@ -102,8 +105,14 @@ def do_iterate():
         logger.debug("have a mqtt_client now")
         _state.mqtt_client.loop_start()
 
+    now = _state.monotonic_clock()
+    timeout = min(
+        CMDQ_GET_TIMEOUT,
+        max(0, _state.next_oper_state_report - now),
+    )
+
     try:
-        cmdDill = _state.cmdq.get(True, CMDQ_GET_TIMEOUT)
+        cmdDill = _state.cmdq.get(True, timeout)
         cmdFun, params = dill.loads(cmdDill)
         cmdFun(*params)
         logger.debug("executed a lambda command with params %s", params)
@@ -111,7 +120,9 @@ def do_iterate():
         # logger.debug("mqttclient iterate noop")
         pass
     except (KeyboardInterrupt, SystemExit):
-        pass
+        return
+
+    _report_operational_state_if_due()
 
 
 # =============================================================================
@@ -159,35 +170,67 @@ def _do_handle_mqtt_msg(topic, payload):
 
 
 def _mqtt_publish_value(publish_topic_key, newValue):
-    global _state
     topic = const.mqtt_topics_pub.get(publish_topic_key)
     if not topic:
         # bug!?!
         logger.error("no mqtt topic for %s %s", publish_topic_key, newValue)
-        return
+        return False
     if not _state.mqtt_client:
         logger.warning("no client to publish mqtt topic %s %s", topic, newValue)
-        return
+        return False
     try:
         # logger.debug("publishing mqtt topic %s %s", topic, newValue)
         info = _state.mqtt_client.publish(topic, newValue, qos=TOPIC_QOS)
         info.wait_for_publish()
     except Exception as e:
         logger.error("client failed publish mqtt topic %s %s %s", topic, newValue, e)
-        return
+        return False
     logger.debug("published mqtt topic %s %s", topic, newValue)
+    return True
+
+
+def _collect_operational_metric(metric_name, collectFun):
+    try:
+        return collectFun()
+    except Exception as e:
+        logger.warning("cannot collect operational metric %s: %s", metric_name, e)
+    return None
+
+
+def _publish_operational_state():
+    uptime_minutes = _collect_operational_metric(
+        "uptime_minutes", systemstats.read_uptime_minutes
+    )
+    mem_available_kb = _collect_operational_metric(
+        "mem_available_kb", systemstats.read_mem_available_kb
+    )
+
+    if uptime_minutes is not None:
+        _mqtt_publish_value(const.mqtt_topic_pub_oper_uptime_minutes, uptime_minutes)
+    if mem_available_kb is not None:
+        _mqtt_publish_value(const.mqtt_topic_pub_oper_mem_available_kb, mem_available_kb)
+
+
+def _report_operational_state_if_due():
+    now = _state.monotonic_clock()
+    if now < _state.next_oper_state_report:
+        return False
+    try:
+        _publish_operational_state()
+    finally:
+        _state.next_oper_state_report = now + const.oper_stateReportPeriodInSeconds
+    return True
 
 
 # =============================================================================
 
 
-def _enqueue_cmd(l):
-    global _state
+def _enqueue_cmd(cmd):
     if not const.mqtt_enabled:
         return True  # noop
-    lDill = dill.dumps(l)
+    cmdDill = dill.dumps(cmd)
     try:
-        _state.cmdq.put_nowait(lDill)
+        _state.cmdq.put_nowait(cmdDill)
     except queue.Full:
         logger.error("command queue is full: cannot add")
         return False
