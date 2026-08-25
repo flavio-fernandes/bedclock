@@ -125,13 +125,15 @@ def init_matrix():
         options.disable_hardware_pulsing = True
     options.pixel_mapper_config = const.scr_pixel_mapper_config
 
-    # https://github.com/hzeller/rpi-rgb-led-matrix/issues/679#issuecomment-423268899
-    _state.matrix = RGBMatrix(options=options)
-
+    # RGBMatrix drops root privileges to "daemon" by default. Load fonts first,
+    # while paths below /home/pi are still accessible to this process.
     for fontFilename in ["10x20", "6x9", "5x8"]:
         font = graphics.Font()
         font.LoadFont("{}/{}.bdf".format(const.scr_fonts_dir, fontFilename))
         _state.fonts.append(font)
+
+    # https://github.com/hzeller/rpi-rgb-led-matrix/issues/679#issuecomment-423268899
+    _state.matrix = RGBMatrix(options=options)
 
     logger.debug("matrix canvas initialized")
 
