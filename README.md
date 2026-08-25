@@ -206,11 +206,20 @@ the **[const.py](bedclock/const.py)** file. Here are the commands I use to see t
 # Install mqtt client to poke bedclock via mqtt broker
 $ sudo apt-get install -y mosquitto-clients
 
-$ mosquitto_sub -v -h ${MQTT_BROKER} -t "/bedclock/motion" -t "/bedclock/light"
+$ mosquitto_sub -v -h ${MQTT_BROKER} -t "/bedclock/motion" -t "/bedclock/light" -t "/bedclock/oper_uptime_minutes" -t "/bedclock/oper_state/mem_available_kb"
 /bedclock/motion on
 /bedclock/motion off
 /bedclock/light 365
+/bedclock/oper_uptime_minutes 1440
+/bedclock/oper_state/mem_available_kb 17432
 ```
+
+Operational-state reports are published once per `oper_stateReportPeriodInSeconds`
+interval. The first report is sent after one complete interval, not at startup,
+and this schedule is independent of `/bedclock/light` lux reporting.
+`/bedclock/oper_uptime_minutes` is Linux system uptime in whole minutes from
+`/proc/uptime`; `/bedclock/oper_state/mem_available_kb` is Linux
+`MemAvailable` in kB from `/proc/meminfo`.
 
 ###### Configuring the clock to stay awake in the dark
 

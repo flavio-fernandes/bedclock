@@ -6,9 +6,16 @@ mqtt_enabled = True
 mqtt_topic_prefix = "bedclock"
 mqtt_topic_pub_light = "light"
 mqtt_topic_pub_motion = "motion"
+mqtt_topic_pub_oper_uptime_minutes = "oper_uptime_minutes"
+mqtt_topic_pub_oper_mem_available_kb = "oper_state/mem_available_kb"
 mqtt_topics_pub = {
     t: "/{}/{}".format(mqtt_topic_prefix, t)
-    for t in [mqtt_topic_pub_light, mqtt_topic_pub_motion]
+    for t in [
+        mqtt_topic_pub_light,
+        mqtt_topic_pub_motion,
+        mqtt_topic_pub_oper_uptime_minutes,
+        mqtt_topic_pub_oper_mem_available_kb,
+    ]
 }
 mqtt_topic_sub_msg = "msg"
 mqtt_topic_sub_stay = "stay"
@@ -55,6 +62,8 @@ scr_stayOnInDarkRoomDefault = False
 motion_proximityMinThreshold = 6
 motion_proximityDampenInSeconds = 3
 motion_luxReportPeriodInSeconds = 601
+# Period between operational-state MQTT reports.
+oper_stateReportPeriodInSeconds = 601
 motion_luxLowWatermark = 6
 motion_luxHighWatermark = 19
 motion_luxDeltaThreshold = 196
